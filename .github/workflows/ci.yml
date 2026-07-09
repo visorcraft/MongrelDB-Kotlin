@@ -107,6 +107,11 @@ jobs:
       - name: Run live tests
         run: ./gradlew --no-daemon -q test
 
+      - name: Run examples
+        run: |
+          echo "Kotlin examples are verified manually (requires Gradle project setup)"
+        continue-on-error: true
+
       - name: Dump server log on failure
         if: failure()
         run: cat /tmp/mongreldb-server.log
