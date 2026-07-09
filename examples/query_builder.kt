@@ -73,7 +73,7 @@ fun main() {
     // 4. Range query: 60 <= score <= 90 (both inclusive). The "min"/"max"
     //    aliases map to the server's lo/hi keys.
     val rangeRows = db.query(TABLE)
-        .where("range", mapOf("column" to 3L, "min" to 60.0, "max" to 90.0))
+        .where("range_f64", mapOf("column" to 3L, "min" to 60.0, "max" to 90.0, "min_inclusive" to true, "max_inclusive" to true))
         .execute()
     printResult("range [60, 90] on score", rangeRows)
 
