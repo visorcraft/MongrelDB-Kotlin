@@ -1,5 +1,6 @@
 package dev.visorcraft.mongreldb
 
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -257,10 +258,10 @@ public class MongrelDB(
     // ── SQL ───────────────────────────────────────────────────────────────
 
     /**
-     * Executes a SQL statement via the `/sql` endpoint. When the daemon returns
-     * a JSON result set, the rows are decoded and returned; for statements that
-     * yield no rows (DDL/DML) or a non-JSON (Arrow IPC) body, it returns an
-     * empty list.
+     * Executes a SQL statement via the `/sql` endpoint, requesting JSON output.
+     * The server returns a JSON array of row objects keyed by column name, e.g.
+     * `[{"id": 1, "name": "Alice", "score": 95.5}]`. For statements that yield
+     * no rows (DDL/DML), the body is empty and an empty list is returned.
      *
      * @param sql the SQL statement
      * @return the decoded rows, or an empty list
@@ -268,13 +269,15 @@ public class MongrelDB(
     public fun sql(sql: String): List<Row> {
         val payload: MutableMap<String, Any?> = LinkedHashMap()
         payload["sql"] = sql
+        payload["format"] = "json"
         val body = post("/sql", payload)
         val trimmed = trim(body)
         if (trimmed.isEmpty()) return emptyList()
-        // The /sql endpoint generally streams Arrow IPC bytes for SELECTs; only
-        // decode when the body is actually JSON to avoid noise.
+        // JSON format requested; a leading '{' is a single object (e.g. an error
+        // envelope), not a row set, so return an empty list. A '[' begins the
+        // row array to decode.
         val first = trimmed[0]
-        if (first == '{'.code.toByte() || first == '['.code.toByte()) {
+        if (first == '['.code.toByte()) {
             val parsed = Json.parse(body)
             if (parsed is List<*>) {
                 return parsed.map { row ->
@@ -282,8 +285,6 @@ public class MongrelDB(
                     if (row is Map<*, *>) row as Row else emptyMap()
                 }
             }
-            // A single JSON object (e.g. an error envelope) is not a row set.
-            if (parsed is Map<*, *>) return emptyList()
         }
         return emptyList()
     }
@@ -414,7 +415,7 @@ public class MongrelDB(
                         } else {
                             conn.errorStream ?: EmptyInputStream
                         }
-                    stream.readBytes()
+                    readBounded(stream, MAX_RESPONSE_BYTES, method, path)
                 } catch (e: IOException) {
                     throw QueryException(
                         "mongreldb: request $method $path failed: ${e.message}",
@@ -446,6 +447,32 @@ public class MongrelDB(
         }
     }
 
+    // readBounded reads up to limit+1 bytes so an oversized body can be
+    // detected without buffering an unbounded amount. A body larger than limit
+    // throws a QueryException.
+    private fun readBounded(
+        stream: InputStream,
+        limit: Long,
+        method: String,
+        path: String,
+    ): ByteArray {
+        val out = ByteArrayOutputStream()
+        val buf = ByteArray(16 * 1024)
+        var total = 0L
+        while (true) {
+            val n = stream.read(buf)
+            if (n < 0) break
+            total += n
+            if (total > limit) {
+                throw QueryException(
+                    "mongreldb: request $method $path response body exceeds $limit bytes",
+                )
+            }
+            out.write(buf, 0, n)
+        }
+        return out.toByteArray()
+    }
+
     // applyAuth sets the Authorization header according to the configured
     // credentials. A bearer token takes precedence over basic auth.
     private fun applyAuth(conn: HttpURLConnection) {
@@ -464,6 +491,12 @@ public class MongrelDB(
     public companion object {
         /** The daemon address used when none is supplied. */
         public const val DEFAULT_BASE_URL: String = "http://127.0.0.1:8453"
+
+        /**
+         * Caps the size of a response body read from the daemon (256 MB).
+         * Bodies larger than this throw a [QueryException].
+         */
+        public const val MAX_RESPONSE_BYTES: Long = 268435456L
 
         /**
          * Flattens a column-id-to-value map to the server's flat

@@ -163,6 +163,8 @@ class MongrelDBLiveTest {
                 .where("pk", mapOf("value" to 42L))
                 .execute()
         assertEquals(1, rows.size, "expected exactly 1 row")
+        // The returned row must carry the queried PK value.
+        assertEquals(42L, cellLong(rows[0], 1L), "expected returned pk 42")
     }
 
     @Test
@@ -183,8 +185,14 @@ class MongrelDBLiveTest {
                 .query(name)
                 .where("range", mapOf("column" to 2L, "min" to 100L, "max" to 150L))
         val rows = q.execute()
-        assertFalse(rows.isEmpty(), "range query should return at least 1 row")
+        // Only the row with amount=120 (pk=2) falls in [100, 150].
+        assertEquals(1, rows.size, "range query should return exactly the matching row")
         assertFalse(q.truncated, "result should not be truncated")
+        // Verify the PK and amount values of the returned row match the filter.
+        assertEquals(2L, cellLong(rows[0], 1L), "expected returned pk 2")
+        val amt = cellLong(rows[0], 2L)
+        assertNotNull(amt, "expected a non-null amount")
+        assertTrue(amt in 100L..150L, "returned amount $amt outside range [100,150]")
     }
 
     @Test
@@ -238,13 +246,20 @@ class MongrelDBLiveTest {
 
     @Test
     @Order(9)
-    @DisplayName("sql runs a statement without error")
+    @DisplayName("sql INSERT increases count; JSON SELECT returns rows")
     fun testSQL() {
         requireDaemon()
-        // SELECT 1 yields no JSON rows (the daemon streams Arrow IPC), so we
-        // just assert it runs without error.
-        val rows = db!!.sql("SELECT 1")
-        assertNotNull(rows, "sql should return a non-null list")
+        val name = uniqueTable("kotlin_sql")
+        freshTable(name, intCol(1, "id", primaryKey = true), intCol(2, "amount", primaryKey = false))
+        assertEquals(0L, db!!.count(name), "expected 0 rows before SQL INSERT")
+
+        // INSERT via SQL must increase the row count.
+        db!!.sql("INSERT INTO $name (id, amount) VALUES (10, 42)")
+        assertEquals(1L, db!!.count(name), "expected count to increase to 1 after SQL INSERT")
+
+        // JSON SQL mode must return the inserted row.
+        val rows = db!!.sql("SELECT id, amount FROM $name")
+        assertEquals(1, rows.size, "expected 1 row from JSON SELECT")
     }
 
     @Test
@@ -335,6 +350,9 @@ class MongrelDBLiveTest {
                 .where("pk", mapOf("value" to 1L))
                 .execute()
         assertEquals(1, rows.size, "expected the upserted row")
+        // Verify the PK and the updated amount value landed.
+        assertEquals(1L, cellLong(rows[0], 1L), "expected returned pk 1")
+        assertEquals(999L, cellLong(rows[0], 2L), "expected updated amount 999")
     }
 
     @Test
@@ -429,6 +447,36 @@ class MongrelDBLiveTest {
         LinkedHashMap<Long, Any?>().apply {
             for ((k, v) in kv) put(k, v)
         }
+
+    // cellLong returns the Long value for colId from a Kit row's flat `cells`
+    // array (shape: [col_id, value, ...]), or null if absent/non-numeric.
+    private fun cellLong(row: Row, colId: Long): Long? {
+        val cellsArr = row["cells"] as? List<*> ?: return null
+        var i = 0
+        while (i + 1 < cellsArr.size) {
+            val id = (cellsArr[i] as? Number)?.toLong()
+            if (id == colId) {
+                return (cellsArr[i + 1] as? Number)?.toLong()
+            }
+            i += 2
+        }
+        return null
+    }
+
+    // cellDouble returns the Double value for colId from a Kit row's flat cells
+    // array, or null if absent/non-numeric.
+    private fun cellDouble(row: Row, colId: Long): Double? {
+        val cellsArr = row["cells"] as? List<*> ?: return null
+        var i = 0
+        while (i + 1 < cellsArr.size) {
+            val id = (cellsArr[i] as? Number)?.toLong()
+            if (id == colId) {
+                return (cellsArr[i + 1] as? Number)?.toDouble()
+            }
+            i += 2
+        }
+        return null
+    }
 
     private fun intCol(id: Long, name: String, primaryKey: Boolean): Map<String, Any?> =
         linkedMapOf(
