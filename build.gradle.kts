@@ -63,3 +63,31 @@ tasks.jar {
         )
     }
 }
+
+// The runnable examples live in examples/ under package com.example and import
+// the client from the main source set. Exposing them as a dedicated `examples`
+// source set lets the Kotlin Gradle plugin register a compileExamplesKotlin
+// task so CI can at least type-check them (running them needs a daemon + runtime
+// classpath, which CI does not provide). The set has no tests of its own and
+// contributes no code to the published artifact.
+sourceSets {
+    create("examples") {
+        java.srcDir("examples")
+        // Compile and run against the client (main) classes.
+        compileClasspath += sourceSets.getByName("main").output
+        runtimeClasspath += sourceSets.getByName("main").output
+    }
+}
+
+// Wire the examples compilation into the build lifecycle so a broken example
+// fails `check`. Keep it JVM 11 to match the main artifact.
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileExamplesKotlin") {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
+}
+
+tasks.named("check") {
+    dependsOn("compileExamplesKotlin")
+}
+
+
+

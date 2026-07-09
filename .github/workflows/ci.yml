@@ -107,9 +107,11 @@ jobs:
       - name: Run live tests
         run: ./gradlew --no-daemon -q test
 
-      - name: Run examples
-        run: |
-          echo "Kotlin examples are verified manually (requires Gradle project setup)"
+      - name: Compile examples
+        # The examples need a daemon to run, so only type-check them against
+        # the client here. continue-on-error keeps a pre-existing example
+        # failure from blocking the rest of CI.
+        run: ./gradlew --no-daemon -q compileExamplesKotlin
         continue-on-error: true
 
       - name: Dump server log on failure
