@@ -370,7 +370,6 @@ chmod +x bin/mongreldb-server
 ## License
 
 Dual-licensed under the **MIT License** or the **Apache License, Version 2.0**,
-at your option. See [LICENSE-MIT](LICENSE-MIT) and [LICENSE-APACHE](LICENSE-APACHE)
-for the full text of both licenses.
+at your option. See [MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE) for the full text.
 
 `SPDX-License-Identifier: MIT OR Apache-2.0`
