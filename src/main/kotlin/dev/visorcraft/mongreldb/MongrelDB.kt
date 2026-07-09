@@ -145,7 +145,7 @@ public class MongrelDB(
             val c = parsed["count"]
             if (c is Number) return c.toLong()
         }
-        return 0L
+        throw QueryException("mongreldb: malformed count response: $body")
     }
 
     // ── CRUD (via the Kit typed transaction endpoint) ─────────────────────
@@ -400,34 +400,36 @@ public class MongrelDB(
             applyAuth(this)
         }
 
-        if (body != null) {
-            val payload = Json.toBytes(body)
-            writeRequest(conn, payload)
-        }
-
-        val data: ByteArray =
-            try {
-                val stream: InputStream =
-                    if (conn.responseCode in 200..299) {
-                        conn.inputStream
-                    } else {
-                        conn.errorStream ?: EmptyInputStream
-                    }
-                stream.readBytes()
-            } catch (e: IOException) {
-                throw QueryException(
-                    "mongreldb: request $method $path failed: ${e.message}",
-                    e,
-                )
-            } finally {
-                conn.disconnect()
+        try {
+            if (body != null) {
+                val payload = Json.toBytes(body)
+                writeRequest(conn, payload)
             }
 
-        val status = conn.responseCode
-        if (status !in 200..299) {
-            throw toException(status, data)
+            val data: ByteArray =
+                try {
+                    val stream: InputStream =
+                        if (conn.responseCode in 200..299) {
+                            conn.inputStream
+                        } else {
+                            conn.errorStream ?: EmptyInputStream
+                        }
+                    stream.readBytes()
+                } catch (e: IOException) {
+                    throw QueryException(
+                        "mongreldb: request $method $path failed: ${e.message}",
+                        e,
+                    )
+                }
+
+            val status = conn.responseCode
+            if (status !in 200..299) {
+                throw toException(status, data)
+            }
+            return data
+        } finally {
+            conn.disconnect()
         }
-        return data
     }
 
     private fun writeRequest(conn: HttpURLConnection, payload: ByteArray) {
@@ -524,14 +526,15 @@ public class MongrelDB(
 
         /**
          * Percent-encodes a path segment (used for table names that may contain
-         * characters unsafe in a URL). Leaves the forward slash intact so
-         * compound identifiers survive.
+         * characters unsafe in a URL). The forward slash is encoded so a table
+         * name cannot inject an extra path segment; only RFC 3986 unreserved
+         * characters pass through unencoded.
          */
         internal fun urlPathEscape(seg: String): String {
             val out = StringBuilder(seg.length)
             for (c in seg) {
                 when {
-                    c == '/' || c == '-' || c == '_' || c == '.' || c == '~' ||
+                    c == '-' || c == '_' || c == '.' || c == '~' ||
                         c in 'A'..'Z' || c in 'a'..'z' || c in '0'..'9' -> {
                         out.append(c)
                     }

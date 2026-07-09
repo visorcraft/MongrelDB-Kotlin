@@ -44,6 +44,7 @@ public class Transaction internal constructor(private val client: MongrelDB) {
         cells: Cells,
         returning: Boolean = false,
     ): Transaction {
+        check(!committed) { ALREADY_COMMITTED }
         val op: MutableMap<String, Any?> = LinkedHashMap()
         val put: MutableMap<String, Any?> = LinkedHashMap()
         put["table"] = table
@@ -70,6 +71,7 @@ public class Transaction internal constructor(private val client: MongrelDB) {
         updateCells: Cells? = null,
         returning: Boolean = false,
     ): Transaction {
+        check(!committed) { ALREADY_COMMITTED }
         val op: MutableMap<String, Any?> = LinkedHashMap()
         val upsert: MutableMap<String, Any?> = LinkedHashMap()
         upsert["table"] = table
@@ -91,6 +93,7 @@ public class Transaction internal constructor(private val client: MongrelDB) {
      * @return this transaction, for chaining
      */
     public fun delete(table: String, rowId: Long): Transaction {
+        check(!committed) { ALREADY_COMMITTED }
         val op: MutableMap<String, Any?> = LinkedHashMap()
         val del: MutableMap<String, Any?> = LinkedHashMap()
         del["table"] = table
@@ -108,6 +111,7 @@ public class Transaction internal constructor(private val client: MongrelDB) {
      * @return this transaction, for chaining
      */
     public fun deleteByPk(table: String, pk: Any?): Transaction {
+        check(!committed) { ALREADY_COMMITTED }
         val op: MutableMap<String, Any?> = LinkedHashMap()
         val del: MutableMap<String, Any?> = LinkedHashMap()
         del["table"] = table
@@ -136,9 +140,16 @@ public class Transaction internal constructor(private val client: MongrelDB) {
      */
     public fun commit(idempotencyKey: String? = null): List<Row> {
         check(!committed) { ALREADY_COMMITTED }
+        if (ops.isEmpty()) {
+            committed = true
+            return emptyList()
+        }
+        /* Send first, then mark committed on success. This keeps the
+         * transaction retryable (with an idempotency key) if the network
+         * call fails or times out. */
+        val results = client.commitTxn(ops, idempotencyKey) ?: emptyList()
         committed = true
-        if (ops.isEmpty()) return emptyList()
-        return client.commitTxn(ops, idempotencyKey) ?: emptyList()
+        return results
     }
 
     /**
