@@ -94,6 +94,14 @@ fun main() {
             mapOf("id" to 1, "name" to "id", "ty" to "int64", "primary_key" to true, "nullable" to false),
             mapOf("id" to 2, "name" to "customer", "ty" to "varchar", "primary_key" to false, "nullable" to false),
             mapOf("id" to 3, "name" to "amount", "ty" to "float64", "primary_key" to false, "nullable" to false),
+            // Optional column keys are forwarded verbatim: `enum_variants`
+            // constrains the value set and `default_value` fills omitted cells.
+            mapOf(
+                "id" to 4, "name" to "status", "ty" to "int32",
+                "primary_key" to false, "nullable" to false,
+                "enum_variants" to listOf("open", "shipped", "closed"),
+                "default_value" to "open",
+            ),
         ),
     )
 

@@ -22,9 +22,10 @@ import dev.visorcraft.mongreldb.Row
 private const val DB_URL_DEFAULT = "http://127.0.0.1:8453"
 
 // Column schema shared across all examples:
-//   col 1 = id (int64, primary key)
-//   col 2 = name (varchar)
-//   col 3 = score (float64)
+//   col 1 = id     (int64, primary key)
+//   col 2 = name   (varchar)
+//   col 3 = score  (float64)
+//   col 4 = status (int32, enum-constrained, defaults to "active")
 private fun column(id: Long, name: String, ty: String, primaryKey: Boolean): Map<String, Any?> =
     mapOf(
         "id" to id,
@@ -32,6 +33,27 @@ private fun column(id: Long, name: String, ty: String, primaryKey: Boolean): Map
         "ty" to ty,
         "primary_key" to primaryKey,
         "nullable" to false,
+    )
+
+// A column may carry optional descriptor keys. Any extra keys are forwarded to
+// the daemon verbatim, so a client stays forward-compatible with server-side
+// column features without an API change:
+//   enum_variants - constrains the column to a fixed set of variant names
+//   default_value - the value written when a row omits this column
+private fun enumColumn(
+    id: Long,
+    name: String,
+    variants: List<String>,
+    default: String,
+): Map<String, Any?> =
+    mapOf(
+        "id" to id,
+        "name" to name,
+        "ty" to "int32",
+        "primary_key" to false,
+        "nullable" to false,
+        "enum_variants" to variants,
+        "default_value" to default,
     )
 
 private fun row(id: Long, name: String, score: Double): Map<Long, Any?> =
@@ -69,6 +91,8 @@ fun main() {
             column(1L, "id", "int64", primaryKey = true),
             column(2L, "name", "varchar", primaryKey = false),
             column(3L, "score", "float64", primaryKey = false),
+            // An enum-constrained column with a server-side default.
+            enumColumn(4L, "status", listOf("active", "suspended", "closed"), default = "active"),
         ),
     )
     println("Created table $table (id $tableId)")

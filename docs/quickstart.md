@@ -129,6 +129,9 @@ fun main() {
             column(1L, "id", "int64", primaryKey = true),
             column(2L, "customer", "varchar", primaryKey = false),
             column(3L, "amount", "float64", primaryKey = false),
+            // Optional column keys ride through verbatim: enum_variants
+            // constrains the value set; default_value fills an omitted cell.
+            enumColumn(4L, "status", listOf("open", "shipped", "closed"), default = "open"),
         ),
     )
     println("created table id: $tableId")
@@ -162,6 +165,28 @@ private fun column(id: Long, name: String, ty: String, primaryKey: Boolean): Map
         "primary_key" to primaryKey,
         "nullable" to false,
     )
+
+/**
+ * Builds an enum-constrained column with a server-side default. The
+ * `enum_variants` and `default_value` keys are optional column descriptor
+ * fields; createTable forwards every key to the daemon verbatim, so a column
+ * can carry any server-supported attribute without a client API change.
+ */
+private fun enumColumn(
+    id: Long,
+    name: String,
+    variants: List<String>,
+    default: String,
+): Map<String, Any?> =
+    mapOf(
+        "id" to id,
+        "name" to name,
+        "ty" to "int32",
+        "primary_key" to false,
+        "nullable" to false,
+        "enum_variants" to variants,
+        "default_value" to default,
+    )
 ```
 
 Run it (Gradle):
@@ -184,7 +209,7 @@ total rows: 2
 |------|--------------|
 | `MongrelDB(url)` | Builds a client targeting one daemon. Thread-safe once constructed. |
 | `db.health()` | GET `/health`; returns `true` when the daemon answers. Always check before real work. |
-| `db.createTable(name, columns)` | POST `/kit/create_table`. Column `id`s are the on-wire identifiers; use them everywhere else. |
+| `db.createTable(name, columns)` | POST `/kit/create_table`. Column `id`s are the on-wire identifiers; use them everywhere else. Extra descriptor keys such as `enum_variants` and `default_value` are forwarded verbatim. |
 | `db.put(table, cells)` | Single-op transaction: POST `/kit/txn` with one `put` op. `cells` is flattened to `[col_id, val, ...]`. |
 | `db.query(table).where(...)` | Builds a `/kit/query` body. `where` pushes a condition down to a native index. |
 | `.projection(listOf(1L, 2L))` | Server returns only those column ids, saving bandwidth. |
