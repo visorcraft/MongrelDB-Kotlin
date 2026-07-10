@@ -15,18 +15,19 @@ native query builder.
 
 ## How `sql` behaves
 
-`MongrelDB.sql(sql)` sends `{"sql": "..."}` to `/sql`. It returns the decoded
-rows when the daemon replies with a JSON result set, and an empty list
-otherwise.
+`MongrelDB.sql(sql)` sends `{"sql": "...", "format": "json"}` to `/sql`,
+asking the daemon for JSON output. It returns the decoded rows when the daemon
+replies with a JSON result set, and an empty list otherwise.
 
 In practice:
 
 - **DDL and DML** (`CREATE TABLE`, `INSERT`, `UPDATE`, `DELETE`) reply with a
   non-JSON status body. `sql` returns an empty list - success is the signal.
-- **`SELECT`** in most daemon builds streams Arrow IPC bytes rather than JSON.
-  `sql` therefore returns an empty list for SELECTs too. Use the native
-  `QueryBuilder` for typed row retrieval in application code, and use `sql` for
-  statements whose execution is the goal (DDL/DML/admin).
+- **`SELECT`** returns its rows as a JSON array of row objects keyed by column
+  name, so `sql` decodes them into a `List<Map<String, Any?>>`. Use the native
+  `QueryBuilder` when you need conditions that map to a specialized index
+  (bitmap, range, full-text, vector); use `sql` for joins, CTEs, window
+  functions, and arbitrary aggregates.
 
 Errors are mapped to the same typed exceptions as everything else: an HTTP 400
 or 5xx raises `QueryException`; 409 raises `ConflictException`; and so on. See
@@ -93,9 +94,8 @@ db.sql("SELECT id, name FROM products WHERE category = 'tools' ORDER BY price")
 db.sql("SELECT category, COUNT(*) AS n FROM products GROUP BY category")
 ```
 
-Remember SELECT bodies usually arrive as Arrow IPC, so `sql` returns an empty
-list. To read rows back into Kotlin maps, mirror the same lookup with the
-`QueryBuilder`.
+The client requests JSON output (`format: "json"`), so each `SELECT` returns
+its rows decoded into a `List<Map<String, Any?>>` keyed by column name.
 
 ## CREATE TABLE AS SELECT
 
@@ -194,12 +194,12 @@ Both read from the same tables, but they are optimized for different jobs.
 
 Rules of thumb:
 
-- Need a typed `List<Map<String, Any?>>` of matching rows? Use the query
-  builder.
+- Need a typed `List<Map<String, Any?>>` of matching rows? Either works: the
+  query builder for indexed lookups, or `sql` for ad-hoc queries.
 - Building/dropping tables, or running a `CREATE TABLE AS SELECT`? Use SQL.
 - Joining multiple tables, computing rankings, or walking a graph? Use SQL.
-- Filtering by one or more indexed columns? Use the query builder - it is faster
-  and avoids Arrow-to-Kotlin decoding.
+- Filtering by one or more indexed columns? Use the query builder - it maps
+  directly to a specialized index and skips the SQL parser.
 
 Mix freely: create tables with SQL, write rows with `MongrelDB.put`, read them
 back with `QueryBuilder`, and run analytics with SQL.

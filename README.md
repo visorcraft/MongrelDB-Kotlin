@@ -226,9 +226,10 @@ db.sql("WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r WHERE n<10)
 db.sql("SELECT id, ROW_NUMBER() OVER (PARTITION BY customer ORDER BY amount DESC) FROM orders")
 ```
 
-The `/sql` endpoint generally streams Arrow IPC bytes for `SELECT`s; `sql()`
-decodes JSON row sets when the daemon returns them and returns an empty list
-otherwise (DDL/DML or binary bodies).
+The `/sql` endpoint now returns JSON by default for `SELECT`s; `sql()` sends
+`format: "json"` and returns the parsed rows (a `List<Map<String, Any?>>`
+keyed by column name). It returns an empty list for statements that produce no
+rows (DDL/DML).
 
 ## User & role management
 

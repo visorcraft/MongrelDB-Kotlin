@@ -222,10 +222,10 @@ unit of work.
 reflects the most recent `execute`. Build a new query, or re-run `execute`
 before reading it.
 
-**Expecting `sql` to always return rows.** The `/sql` endpoint streams Arrow IPC
-for `SELECT` in most builds, so `sql` returns an empty list (not an exception)
-for result sets. Use it for DDL/DML and statements whose success is the signal;
-use the native query builder for typed row retrieval.
+**Expecting `sql` to always return rows.** `sql` sends `format: "json"` and
+returns the parsed rows for `SELECT`, but it returns an empty list (not an
+exception) for DDL/DML statements that produce no rows. Treat an empty list as
+"the statement succeeded but had nothing to return," not as a failure.
 
 **Pointing at a daemon that requires auth.** If the daemon was started with
 `--auth-token` or `--auth-users`, every call throws `AuthException` unless you
