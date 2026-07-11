@@ -112,9 +112,19 @@ public class MongrelDB(
      * @return the assigned table id, or `0L` when the daemon omits one
      */
     public fun createTable(name: String, columns: List<Map<String, Any?>>): Long {
+        return createTable(name, columns, null)
+    }
+
+    /** Creates a table with an optional top-level engine constraints object. */
+    public fun createTable(
+        name: String,
+        columns: List<Map<String, Any?>>,
+        constraints: Map<String, Any?>?,
+    ): Long {
         val payload: MutableMap<String, Any?> = LinkedHashMap()
         payload["name"] = name
         payload["columns"] = columns
+        if (constraints != null) payload["constraints"] = constraints
         val body = post("/kit/create_table", payload)
         val parsed = if (body.isEmpty()) null else Json.parse(body)
         if (parsed is Map<*, *>) {

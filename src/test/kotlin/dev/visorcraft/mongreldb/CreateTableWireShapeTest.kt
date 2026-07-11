@@ -59,14 +59,27 @@ class CreateTableWireShapeTest {
             linkedMapOf<String, Any?>(
                 "id" to 2L,
                 "name" to "status",
-                "ty" to "int32",
+                "ty" to "enum",
                 "primary_key" to false,
                 "nullable" to false,
                 "enum_variants" to listOf("open", "closed", "archived"),
-                "default_value" to "open",
             )
 
-        val id = db.createTable("tickets", listOf(idColumn(), statusCol))
+        val createdAt =
+            linkedMapOf<String, Any?>(
+                "id" to 3L,
+                "name" to "created_at",
+                "ty" to "timestamp_nanos",
+                "default_value" to "now",
+            )
+        val constraints =
+            mapOf<String, Any?>(
+                "checks" to listOf(
+                    mapOf("id" to 1L, "name" to "id_present", "expr" to mapOf("IsNotNull" to 1L)),
+                ),
+            )
+
+        val id = db.createTable("tickets", listOf(idColumn(), statusCol, createdAt), constraints)
         assertEquals(7L, id, "createTable should return the daemon's table_id")
 
         val body = lastBody.get()
@@ -83,9 +96,12 @@ class CreateTableWireShapeTest {
             "enum_variants not serialized as an ordered array: $body",
         )
         assertTrue(
-            body.contains("\"default_value\":\"open\""),
+            body.contains("\"default_value\":\"now\""),
             "default_value not serialized verbatim: $body",
         )
+        assertTrue(body.contains("\"constraints\""), "body missing constraints key: $body")
+        assertTrue(body.contains("\"checks\""), "body missing constraints.checks: $body")
+        assertTrue(body.contains("\"IsNotNull\":1"), "body missing check expression: $body")
     }
 
     @Test

@@ -209,7 +209,7 @@ total rows: 2
 |------|--------------|
 | `MongrelDB(url)` | Builds a client targeting one daemon. Thread-safe once constructed. |
 | `db.health()` | GET `/health`; returns `true` when the daemon answers. Always check before real work. |
-| `db.createTable(name, columns)` | POST `/kit/create_table`. Column `id`s are the on-wire identifiers; use them everywhere else. Extra descriptor keys such as `enum_variants` and `default_value` are forwarded verbatim. |
+| `db.createTable(name, columns[, constraints])` | POST `/kit/create_table`; optional constraints map carries engine checks. Column `id`s are the on-wire identifiers; use them everywhere else. Extra descriptor keys such as `enum_variants` and `default_value` are forwarded verbatim. |
 | `db.put(table, cells)` | Single-op transaction: POST `/kit/txn` with one `put` op. `cells` is flattened to `[col_id, val, ...]`. |
 | `db.query(table).where(...)` | Builds a `/kit/query` body. `where` pushes a condition down to a native index. |
 | `.projection(listOf(1L, 2L))` | Server returns only those column ids, saving bandwidth. |
