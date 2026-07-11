@@ -30,12 +30,7 @@ class NativeDBTest {
             }
         """.trimIndent()
 
-        private fun nativeAvailable(): Boolean = try {
-            NativeDB::class.java.name
-            true
-        } catch (e: UnsatisfiedLinkError) {
-            false
-        }
+        private fun nativeAvailable(): Boolean = NativeDB.nativeAvailable()
     }
 
     @Test
