@@ -53,7 +53,7 @@ class CreateTableWireShapeTest {
     }
 
     @Test
-    @DisplayName("createTable sends enum_variants and default_value verbatim")
+    @DisplayName("createTable preserves enum, static-default, and dynamic-default fields")
     fun enumVariantsAndDefaultValueAppearVerbatim() {
         val statusCol =
             linkedMapOf<String, Any?>(
@@ -70,8 +70,9 @@ class CreateTableWireShapeTest {
                 "id" to 3L,
                 "name" to "created_at",
                 "ty" to "timestamp_nanos",
-                "default_value" to "now",
+                "default_expr" to "now",
             )
+        val attempts = mapOf<String, Any?>("id" to 4L, "name" to "attempts", "ty" to "int64", "default_value" to 3L)
         val constraints =
             mapOf<String, Any?>(
                 "checks" to listOf(
@@ -79,25 +80,26 @@ class CreateTableWireShapeTest {
                 ),
             )
 
-        val id = db.createTable("tickets", listOf(idColumn(), statusCol, createdAt), constraints)
+        val id = db.createTable("tickets", listOf(idColumn(), statusCol, createdAt, attempts), constraints)
         assertEquals(7L, id, "createTable should return the daemon's table_id")
 
         val body = lastBody.get()
         assertNotNull(body, "server captured no request body")
 
-        // Both keys must appear verbatim in the on-wire JSON.
+        // All optional keys must appear verbatim in the on-wire JSON.
         assertTrue(body!!.contains("\"enum_variants\""), "body missing enum_variants key: $body")
-        assertTrue(body.contains("\"default_value\""), "body missing default_value key: $body")
+        assertTrue(body.contains("\"default_value\":3"), "body missing scalar default_value: $body")
+        assertTrue(body.contains("\"default_expr\":\"now\""), "body missing default_expr: $body")
 
         // The values must round-trip too, not just the keys: the variant array
-        // is serialized in order and the default is the string "open".
+        // is serialized in order and the static default remains numeric.
         assertTrue(
             body.contains("[\"open\",\"closed\",\"archived\"]"),
             "enum_variants not serialized as an ordered array: $body",
         )
         assertTrue(
-            body.contains("\"default_value\":\"now\""),
-            "default_value not serialized verbatim: $body",
+            body.contains("\"default_value\":3"),
+            "default_value did not preserve its numeric type: $body",
         )
         assertTrue(body.contains("\"constraints\""), "body missing constraints key: $body")
         assertTrue(body.contains("\"checks\""), "body missing constraints.checks: $body")
