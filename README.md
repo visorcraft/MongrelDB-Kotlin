@@ -4,8 +4,6 @@
 
 <h1 align="center">MongrelDB Kotlin Client</h1>
 
-History retention: `setHistoryRetentionEpochs`, `historyRetentionEpochs`, and `earliestRetainedEpoch`.
-
 <p align="center">
   <b>Pure Kotlin client for MongrelDB - embedded+server database with SQL, vector search, full-text search, and AI-native retrieval.</b>
   <br />
@@ -97,8 +95,10 @@ fun main() {
             mapOf("id" to 2, "name" to "customer", "ty" to "varchar", "primary_key" to false, "nullable" to false),
             mapOf("id" to 3, "name" to "amount", "ty" to "float64", "primary_key" to false, "nullable" to false),
             // Optional column keys are forwarded verbatim: `enum_variants`
-            // constrains values; scalar `default_value` or dynamic
-            // `default_expr` fills omitted cells.
+            // constrains values; scalar `default_value` (string, integer,
+            // boolean, explicit null, or literal "now"/"uuid") fills omitted
+            // cells, while dynamic `default_expr` ("now" or "uuid") is sent
+            // instead when the default must be evaluated server-side.
             mapOf(
                 "id" to 4, "name" to "status", "ty" to "int32",
                 "primary_key" to false, "nullable" to false,
@@ -242,6 +242,33 @@ The `/sql` endpoint now returns JSON by default for `SELECT`s; `sql()` sends
 keyed by column name). It returns an empty list for statements that produce no
 rows (DDL/DML).
 
+## History retention and time travel
+
+The client can set and read the database-wide history retention window. Writes
+advance the epoch, and `AS OF EPOCH` queries read older versions of a row as
+long as the epoch is within the retention window.
+
+```kotlin
+// Keep at least 100 epochs of history.
+db.setHistoryRetentionEpochs(100L)
+println(db.historyRetentionEpochs())   // 100
+println(db.earliestRetainedEpoch())    // earliest epoch still readable
+
+// Insert, then force a commit to pin the epoch.
+db.put("orders", mapOf(1L to 1L, 2L to "orig"))
+// (the server exposes POST /tables/{name}/commit to flush and return the epoch)
+
+// Later, update the row.
+db.sql("UPDATE orders SET customer = 'updated' WHERE id = 1")
+
+// Read the older version with SQL AS OF EPOCH.
+val old = db.sql("SELECT customer FROM orders AS OF EPOCH 5 WHERE id = 1")
+```
+
+Retention is a durable, database-wide policy that requires `ADMIN` permission
+when the daemon runs with auth. Increasing retention cannot restore history
+already pruned by a smaller earlier window.
+
 ## User & role management
 
 User, role, and permission management is performed through SQL against the
@@ -310,6 +337,9 @@ try {
 | `schemaFor(table)` | Single-table descriptor |
 | `compact()` | Compact all tables |
 | `compactTable(table)` | Compact one table |
+| `setHistoryRetentionEpochs(epochs)` | Set the history retention window |
+| `historyRetentionEpochs()` | Return the configured retention window |
+| `earliestRetainedEpoch()` | Return the earliest readable epoch |
 | `beginTransaction()` | Start a batch |
 
 ### `QueryBuilder`

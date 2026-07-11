@@ -100,14 +100,32 @@ public class MongrelDB(
         throw QueryException("mongreldb: unexpected table-list response: ${Json.preview(body)}")
     }
 
+    /** Pair returned by the {@code /history/retention} GET/PUT endpoint. */
     public data class HistoryRetention(val historyRetentionEpochs: Long, val earliestRetainedEpoch: Long)
 
+    /** Sets the durable history-retention window and returns the post-update state. */
     public fun setHistoryRetentionEpochs(epochs: Long): HistoryRetention =
         parseHistoryRetention(doRequest("PUT", "/history/retention", mapOf("history_retention_epochs" to epochs)))
 
+    /** Returns the current retention window and earliest retained epoch. */
     public fun historyRetention(): HistoryRetention = parseHistoryRetention(get("/history/retention"))
+
+    /** Returns the configured history-retention window size in epochs. */
     public fun historyRetentionEpochs(): Long = historyRetention().historyRetentionEpochs
+
+    /** Returns the earliest epoch still readable via {@code AS OF EPOCH} queries. */
     public fun earliestRetainedEpoch(): Long = historyRetention().earliestRetainedEpoch
+
+    /** Package-visible helper used by live tests to commit a table and read the resulting epoch. */
+    internal fun commitTable(table: String): Long {
+        val body = post("/tables/${urlPathEscape(table)}/commit", null)
+        val parsed = if (body.isEmpty()) null else Json.parse(body)
+        if (parsed is Map<*, *>) {
+            val epoch = parsed["epoch"]
+            if (epoch is Number) return epoch.toLong()
+        }
+        throw QueryException("mongreldb: commit response missing epoch: ${Json.preview(body)}")
+    }
 
     private fun parseHistoryRetention(body: ByteArray): HistoryRetention {
         val value = Json.parse(body) as? Map<*, *> ?: throw QueryException("mongreldb: malformed history retention response")

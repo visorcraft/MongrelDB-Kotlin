@@ -404,6 +404,33 @@ class MongrelDBLiveTest {
         assertFalse(db!!.tableNames().contains(name), "table should be gone after drop")
     }
 
+    @Test
+    @Order(21)
+    @DisplayName("retention window and AS OF EPOCH time-travel reads")
+    fun testRetentionAndAsOfEpoch() {
+        requireDaemon()
+        val name = uniqueTable("kotlin_retention")
+
+        db!!.setHistoryRetentionEpochs(100L)
+        assertEquals(100L, db!!.historyRetentionEpochs())
+        assertTrue(db!!.earliestRetainedEpoch() >= 0L)
+
+        freshTable(name, intCol(1, "id", primaryKey = true), varcharCol(2, "name"))
+        db!!.put(name, cells(1L to 1L, 2L to "orig"))
+        val insertEpoch = db!!.commitTable(name)
+        assertTrue(insertEpoch > 0, "commit should return a positive epoch")
+
+        db!!.sql("UPDATE $name SET name = 'updated' WHERE id = 1")
+
+        val current = db!!.sql("SELECT name FROM $name WHERE id = 1")
+        assertEquals(1, current.size, "current SELECT should return one row")
+        assertEquals("updated", current[0]["name"])
+
+        val past = db!!.sql("SELECT name FROM $name AS OF EPOCH $insertEpoch WHERE id = 1")
+        assertEquals(1, past.size, "AS OF EPOCH SELECT should return one row")
+        assertEquals("orig", past[0]["name"])
+    }
+
     /**
      * A standalone sanity test that always runs (no daemon needed): a client
      * constructed with no reachable server reports `health() == false` rather
@@ -496,6 +523,15 @@ class MongrelDBLiveTest {
             "id" to id,
             "name" to name,
             "ty" to "float64",
+            "primary_key" to false,
+            "nullable" to false,
+        )
+
+    private fun varcharCol(id: Long, name: String): Map<String, Any?> =
+        linkedMapOf(
+            "id" to id,
+            "name" to name,
+            "ty" to "varchar",
             "primary_key" to false,
             "nullable" to false,
         )

@@ -168,9 +168,15 @@ private fun column(id: Long, name: String, ty: String, primaryKey: Boolean): Map
 
 /**
  * Builds an enum-constrained column with a server-side default. The
- * `enum_variants` and `default_value` keys are optional column descriptor
- * fields; createTable forwards every key to the daemon verbatim, so a column
- * can carry any server-supported attribute without a client API change.
+ * `enum_variants`, `default_value`, and `default_expr` keys are optional
+ * column descriptor fields; createTable forwards every key to the daemon
+ * verbatim, so a column can carry any server-supported attribute without a
+ * client API change.
+ *
+ * `default_value` accepts a static scalar: string, integer, boolean, explicit
+ * null, or the literal strings "now"/"uuid". Dynamic defaults use
+ * `default_expr` instead ("now" or "uuid"). When both are present,
+ * `default_expr` takes precedence on the server.
  */
 private fun enumColumn(
     id: Long,
@@ -209,7 +215,7 @@ total rows: 2
 |------|--------------|
 | `MongrelDB(url)` | Builds a client targeting one daemon. Thread-safe once constructed. |
 | `db.health()` | GET `/health`; returns `true` when the daemon answers. Always check before real work. |
-| `db.createTable(name, columns[, constraints])` | POST `/kit/create_table`; optional constraints map carries engine checks. Column `id`s are the on-wire identifiers; use them everywhere else. Extra descriptor keys such as `enum_variants` and `default_value` are forwarded verbatim. |
+| `db.createTable(name, columns[, constraints])` | POST `/kit/create_table`; optional constraints map carries engine checks. Column `id`s are the on-wire identifiers; use them everywhere else. Extra descriptor keys such as `enum_variants`, `default_value`, and `default_expr` are forwarded verbatim. |
 | `db.put(table, cells)` | Single-op transaction: POST `/kit/txn` with one `put` op. `cells` is flattened to `[col_id, val, ...]`. |
 | `db.query(table).where(...)` | Builds a `/kit/query` body. `where` pushes a condition down to a native index. |
 | `.projection(listOf(1L, 2L))` | Server returns only those column ids, saving bandwidth. |
@@ -217,7 +223,35 @@ total rows: 2
 | `.execute()` | Sends the query and decodes the `rows` list. |
 | `db.count(table)` | GET `/tables/{name}/count`. |
 
-## 6. Common pitfalls
+## 6. History retention and time travel
+
+MongrelDB keeps a configurable number of historical epochs. You can read older
+versions of a table with `AS OF EPOCH` as long as the epoch is not older than
+the retention floor.
+
+```kotlin
+// Keep 100 epochs of history.
+db.setHistoryRetentionEpochs(100L)
+println(db.historyRetentionEpochs())  // 100
+println(db.earliestRetainedEpoch())   // earliest epoch still readable
+
+// Pin the current epoch after a write (the server exposes
+// POST /tables/{name}/commit), then update the row.
+db.put("orders", mapOf(1L to 1L, 2L to "Alice", 3L to 99.5))
+val epoch = 5L // obtained from POST /tables/orders/commit
+
+db.sql("UPDATE orders SET customer = 'Bob' WHERE id = 1")
+
+// Read the older version.
+val old = db.sql("SELECT customer FROM orders AS OF EPOCH $epoch WHERE id = 1")
+println(old)
+```
+
+Retention requires `ADMIN` permission when the daemon uses auth. Raising the
+retention window cannot recover history already pruned by a previously smaller
+window.
+
+## 7. Common pitfalls
 
 **Using the column name instead of the column id.** Every on-wire API uses the
 numeric `id` from `createTable`, never the `name`. The query builder's `column`
