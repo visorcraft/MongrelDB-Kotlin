@@ -124,3 +124,36 @@ jobs:
           if [ -f /tmp/mongreldb-server.pid ]; then
             kill "$(cat /tmp/mongreldb-server.pid)" 2>/dev/null || true
           fi
+
+  native:
+    name: Native embedding (JNI)
+    runs-on: ubuntu-latest
+    env:
+      SERVER_VERSION: '0.48.0'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Download JNI library
+        run: |
+          mkdir -p native-libs
+          curl -fsSL -o /tmp/jni.jar \
+            "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-jni-${SERVER_VERSION}-linux-x64.jar"
+          unzip -j /tmp/jni.jar "native/linux/x64/*" -d native-libs
+
+      - name: Build
+        run: ./gradlew compileKotlin compileTestKotlin
+
+      - name: Run native tests
+        run: ./gradlew test --tests "dev.visorcraft.mongreldb.NativeDBTest"
+        env:
+          MONGRELDB_NATIVE_DIR: ${{ github.workspace }}/native-libs
+          JAVA_TOOL_OPTIONS: "-Djava.library.path=${{ github.workspace }}/native-libs"
+
+      - name: Compile native example
+        run: ./gradlew compileExamplesKotlin
+        continue-on-error: true
