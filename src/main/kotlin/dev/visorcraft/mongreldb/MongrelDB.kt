@@ -659,6 +659,10 @@ public class MongrelDB(
                     }
             }
 
+            if (message.startsWith("not found:")) {
+                return NotFoundException(message, 404, code, opIndex)
+            }
+
             return when (status) {
                 401, 403 -> AuthException(message, status, code, opIndex)
                 404 -> NotFoundException(message, status, code, opIndex)
