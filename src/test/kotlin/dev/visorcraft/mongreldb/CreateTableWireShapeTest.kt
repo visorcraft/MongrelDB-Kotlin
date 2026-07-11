@@ -73,6 +73,11 @@ class CreateTableWireShapeTest {
                 "default_expr" to "now",
             )
         val attempts = mapOf<String, Any?>("id" to 4L, "name" to "attempts", "ty" to "int64", "default_value" to 3L)
+        val extras = listOf(
+            mapOf<String, Any?>("id" to 5L, "name" to "s", "ty" to "varchar", "default_value" to "draft"),
+            mapOf<String, Any?>("id" to 6L, "name" to "b", "ty" to "bool", "default_value" to true),
+            mapOf<String, Any?>("id" to 7L, "name" to "n", "ty" to "varchar", "default_value" to null),
+        )
         val constraints =
             mapOf<String, Any?>(
                 "checks" to listOf(
@@ -80,7 +85,7 @@ class CreateTableWireShapeTest {
                 ),
             )
 
-        val id = db.createTable("tickets", listOf(idColumn(), statusCol, createdAt, attempts), constraints)
+        val id = db.createTable("tickets", listOf(idColumn(), statusCol, createdAt, attempts) + extras, constraints)
         assertEquals(7L, id, "createTable should return the daemon's table_id")
 
         val body = lastBody.get()
@@ -90,6 +95,9 @@ class CreateTableWireShapeTest {
         assertTrue(body!!.contains("\"enum_variants\""), "body missing enum_variants key: $body")
         assertTrue(body.contains("\"default_value\":3"), "body missing scalar default_value: $body")
         assertTrue(body.contains("\"default_expr\":\"now\""), "body missing default_expr: $body")
+        assertTrue(body.contains("\"default_value\":\"draft\""), "body missing string default: $body")
+        assertTrue(body.contains("\"default_value\":true"), "body missing bool default: $body")
+        assertTrue(body.contains("\"default_value\":null"), "body missing null default: $body")
 
         // The values must round-trip too, not just the keys: the variant array
         // is serialized in order and the static default remains numeric.

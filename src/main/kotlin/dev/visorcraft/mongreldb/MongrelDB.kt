@@ -100,6 +100,23 @@ public class MongrelDB(
         throw QueryException("mongreldb: unexpected table-list response: ${Json.preview(body)}")
     }
 
+    public data class HistoryRetention(val historyRetentionEpochs: Long, val earliestRetainedEpoch: Long)
+
+    public fun setHistoryRetentionEpochs(epochs: Long): HistoryRetention =
+        parseHistoryRetention(doRequest("PUT", "/history/retention", mapOf("history_retention_epochs" to epochs)))
+
+    public fun historyRetention(): HistoryRetention = parseHistoryRetention(get("/history/retention"))
+    public fun historyRetentionEpochs(): Long = historyRetention().historyRetentionEpochs
+    public fun earliestRetainedEpoch(): Long = historyRetention().earliestRetainedEpoch
+
+    private fun parseHistoryRetention(body: ByteArray): HistoryRetention {
+        val value = Json.parse(body) as? Map<*, *> ?: throw QueryException("mongreldb: malformed history retention response")
+        return HistoryRetention(
+            (value["history_retention_epochs"] as? Number)?.toLong() ?: throw QueryException("mongreldb: missing history_retention_epochs"),
+            (value["earliest_retained_epoch"] as? Number)?.toLong() ?: throw QueryException("mongreldb: missing earliest_retained_epoch"),
+        )
+    }
+
     /**
      * Creates a table named [name] with the given columns and returns the
      * assigned table id.
