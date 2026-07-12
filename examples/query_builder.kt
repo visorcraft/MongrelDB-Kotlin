@@ -14,8 +14,8 @@
 
 package com.example
 
-import dev.visorcraft.mongreldb.MongrelDB
-import dev.visorcraft.mongreldb.Row
+import com.visorcraft.mongreldb.MongrelDB
+import com.visorcraft.mongreldb.Row
 
 private const val DB_URL_DEFAULT = "http://127.0.0.1:8453"
 

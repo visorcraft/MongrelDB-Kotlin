@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb
+package com.visorcraft.mongreldb
 
 /**
  * Builds a request for the daemon's `/kit/query` endpoint, where conditions

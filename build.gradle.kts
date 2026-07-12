@@ -12,7 +12,7 @@ plugins {
     `java-library`
 }
 
-group = "dev.visorcraft"
+group = "com.visorcraft"
 version = "0.1.0"
 
 repositories {
@@ -59,7 +59,7 @@ tasks.jar {
                 "Implementation-Title" to "MongrelDB Kotlin Client",
                 "Implementation-Version" to project.version,
                 "Implementation-Vendor" to "Visorcraft",
-                "Automatic-Module-Name" to "dev.visorcraft.mongreldb",
+                "Automatic-Module-Name" to "com.visorcraft.mongreldb",
             ),
         )
     }

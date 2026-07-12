@@ -208,7 +208,7 @@ txn.commit() // throws IllegalStateException - logic bug
 ## Quick reference
 
 ```kotlin
-import dev.visorcraft.mongreldb.*
+import com.visorcraft.mongreldb.*
 
 // Type-based discrimination:
 try {

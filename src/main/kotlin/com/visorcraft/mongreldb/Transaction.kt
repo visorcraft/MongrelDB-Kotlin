@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb
+package com.visorcraft.mongreldb
 
 /**
  * Stages operations locally and commits them atomically in a single `/kit/txn`

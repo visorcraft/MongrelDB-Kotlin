@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/visorcraft/MongrelDB-Kotlin/actions/workflows/ci.yml"><img src="https://github.com/visorcraft/MongrelDB-Kotlin/actions/workflows/ci.yml/badge.svg" alt="Kotlin CI" /></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-JVM%201.1%2B-7F52FF.svg" alt="Kotlin" /></a>
-  <a href="https://central.sonatype.com/artifact/dev.visorcraft/mongreldb-kotlin"><img src="https://img.shields.io/maven-central/v/dev.visorcraft/mongreldb-kotlin.svg?label=Maven%20Central" alt="Maven Central" /></a>
+  <a href="https://central.sonatype.com/artifact/com.visorcraft/mongreldb-kotlin"><img src="https://img.shields.io/maven-central/v/com.visorcraft/mongreldb-kotlin.svg?label=Maven%20Central" alt="Maven Central" /></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License" /></a>
 </p>
 
@@ -21,27 +21,27 @@
 
 | Surface | Coordinates | Install |
 |---|---|---|
-| Kotlin client | `dev.visorcraft:mongreldb-kotlin:0.1.0` | Gradle / Maven snippets below |
+| Kotlin client | `com.visorcraft:mongreldb-kotlin:0.1.0` | Gradle / Maven snippets below |
 
 ### Gradle (Kotlin DSL)
 
 ```kotlin
 dependencies {
-    implementation("dev.visorcraft:mongreldb-kotlin:0.1.0")
+    implementation("com.visorcraft:mongreldb-kotlin:0.1.0")
 }
 ```
 
 ### Gradle (Groovy DSL)
 
 ```groovy
-implementation 'dev.visorcraft:mongreldb-kotlin:0.1.0'
+implementation 'com.visorcraft:mongreldb-kotlin:0.1.0'
 ```
 
 ### Maven
 
 ```xml
 <dependency>
-  <groupId>dev.visorcraft</groupId>
+  <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-kotlin</artifactId>
   <version>0.1.0</version>
 </dependency>
@@ -81,7 +81,7 @@ Task-focused, commented guides live in [`docs/`](docs):
 ## Quick Example
 
 ```kotlin
-import dev.visorcraft.mongreldb.MongrelDB
+import com.visorcraft.mongreldb.MongrelDB
 
 fun main() {
     // Connect to a running mongreldb-server daemon.
@@ -412,7 +412,7 @@ chmod +x bin/mongreldb-server
 ## Native embedding (Tier 1)
 
 For in-process access with zero serialization overhead, use the `NativeDB`
-class (in `dev.visorcraft.mongreldb.native_mode`). It loads the JNI shim
+class (in `com.visorcraft.mongreldb.native_mode`). It loads the JNI shim
 (`libmongreldb_jni`) and runs the engine directly in the JVM - no daemon
 needed.
 
@@ -425,7 +425,7 @@ export MONGRELDB_NATIVE_DIR=/path/to/native/libs
 ```
 
 ```kotlin
-import dev.visorcraft.mongreldb.native_mode.NativeDB
+import com.visorcraft.mongreldb.native_mode.NativeDB
 
 val schemaJson = """{"tables":[{"id":1,"name":"users",...}]}"""
 

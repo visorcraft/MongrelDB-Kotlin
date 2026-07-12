@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb
+package com.visorcraft.mongreldb
 
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.AfterAll

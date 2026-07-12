@@ -68,7 +68,7 @@ Add the dependency to `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("dev.visorcraft:mongreldb-kotlin:0.1.0")
+    implementation("com.visorcraft:mongreldb-kotlin:0.1.0")
 }
 ```
 
@@ -85,14 +85,14 @@ kotlin {
 ### With Gradle (Groovy DSL)
 
 ```groovy
-implementation 'dev.visorcraft:mongreldb-kotlin:0.1.0'
+implementation 'com.visorcraft:mongreldb-kotlin:0.1.0'
 ```
 
 ### With Maven
 
 ```xml
 <dependency>
-  <groupId>dev.visorcraft</groupId>
+  <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-kotlin</artifactId>
   <version>0.1.0</version>
 </dependency>
@@ -107,7 +107,7 @@ Create `src/main/kotlin/com/example/Main.kt`:
 ```kotlin
 package com.example
 
-import dev.visorcraft.mongreldb.MongrelDB
+import com.visorcraft.mongreldb.MongrelDB
 
 fun main() {
     // 1. Connect to the daemon. A null/blank url defaults to

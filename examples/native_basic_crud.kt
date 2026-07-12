@@ -14,7 +14,7 @@
 
 package com.example
 
-import dev.visorcraft.mongreldb.native_mode.NativeDB
+import com.visorcraft.mongreldb.native_mode.NativeDB
 
 fun main() {
     if (!NativeDB.nativeAvailable()) {

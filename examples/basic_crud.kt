@@ -4,7 +4,7 @@
 //
 //   kotlin -cp mongreldb-kotlin.jar examples/basic_crud.kt
 //
-// or as a Gradle/Maven app with `dev.visorcraft:mongreldb-kotlin` on the
+// or as a Gradle/Maven app with `com.visorcraft:mongreldb-kotlin` on the
 // classpath and this file under src/main/kotlin.
 //
 // Requires a mongreldb-server daemon running on http://127.0.0.1:8453, or
@@ -16,8 +16,8 @@
 
 package com.example
 
-import dev.visorcraft.mongreldb.MongrelDB
-import dev.visorcraft.mongreldb.Row
+import com.visorcraft.mongreldb.MongrelDB
+import com.visorcraft.mongreldb.Row
 
 private const val DB_URL_DEFAULT = "http://127.0.0.1:8453"
 
