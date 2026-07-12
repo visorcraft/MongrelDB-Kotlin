@@ -149,7 +149,7 @@ jobs:
         run: ./gradlew compileKotlin compileTestKotlin
 
       - name: Run native tests
-        run: ./gradlew test --tests "dev.visorcraft.mongreldb.NativeDBTest"
+        run: ./gradlew test --tests "com.visorcraft.mongreldb.NativeDBTest"
         env:
           MONGRELDB_NATIVE_DIR: ${{ github.workspace }}/native-libs
           JAVA_TOOL_OPTIONS: "-Djava.library.path=${{ github.workspace }}/native-libs"
