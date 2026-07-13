@@ -2,7 +2,7 @@
 #
 # The new Central Publishing Portal has no official Gradle plugin (as of 2025),
 # so we publish to the staging API via maven-publish, then call the Portal REST
-# API to convert the staging repository into a published deployment.
+# API to transfer the staging repository into an automatic Portal deployment.
 #
 # Required secrets (repo settings → Secrets and variables → Actions):
 #   CENTRAL_USERNAME  - Central Portal token username
@@ -47,18 +47,7 @@ jobs:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
         run: |
-          # The Gradle upload created a staging repository; now promote it.
-          # Query recent staging repos, find ours, and publish it.
-          AUTH="$CENTRAL_USERNAME:$CENTRAL_PASSWORD"
-          # List staging repos and find the one matching our artifact
-          STAGING_REPOS=$(curl -s -u "$AUTH" \
-            "https://ossrh-staging-api.central.sonatype.com/service/local/staging/profile_repositories" \
-            | python3 -c "import json,sys; data=json.load(sys.stdin); print(' '.join(r['repositoryId'] for r in data.get('data',[])))")
-          echo "Staging repos: $STAGING_REPOS"
-          for repo in $STAGING_REPOS; do
-            echo "Publishing staging repo: $repo"
-            curl -sf -u "$AUTH" -X POST \
-              "https://ossrh-staging-api.central.sonatype.com/service/local/staging/bulk/promote" \
-              -H 'Content-Type: application/json' \
-              -d "{\"data\":{\"stagedRepositoryIds\":[\"$repo\"],\"description\":\"Publish mongreldb-kotlin ${{ github.ref_name }}\"}}"
-          done
+          TOKEN=$(printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.visorcraft?publishing_type=automatic"
