@@ -10,10 +10,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("jvm") version "2.1.21"
     `java-library`
+    `maven-publish`
+    signing
 }
 
 group = "com.visorcraft"
-version = "0.1.0"
+version = "0.50.1"
 
 repositories {
     mavenCentral()
@@ -24,6 +26,12 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation(kotlin("test"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // The native embedded mode (JNI) has no declared build dependency.
+    // NativeDB loads libmongreldb_jni at runtime via NativeLoader, which
+    // searches MONGRELDB_NATIVE_DIR, java.library.path, or the classpath
+    // (for the com.visorcraft:mongreldb-jni fat JAR). Consumers add the
+    // JAR to their own project when they want native mode.
 }
 
 // Produce JVM 11 bytecode so the artifact runs on Java 11 or newer, without
@@ -88,6 +96,83 @@ tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileExamplesKot
 
 tasks.named("check") {
     dependsOn("compileExamplesKotlin")
+}
+
+// ── Maven Central publishing ───────────────────────────────────────────────
+// The signing plugin only signs when the publishing task runs (CI only), and
+// only when signing.keyId/secretKeyRingFile/password are present (gradle.properties
+// in CI, never committed). The emptyJavadocJar satisfies Maven Central's javadoc
+// requirement for Kotlin libraries (Kotlin consumers use -sources instead).
+val javadocJar by tasks.registering(Jar::class) {
+    archiveClassifier.set("javadoc")
+}
+
+artifacts {
+    archives(javadocJar)
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+            artifact(javadocJar)
+
+            pom {
+                name.set("MongrelDB Kotlin Client")
+                description.set(
+                    "Pure-Kotlin HTTP client for MongrelDB - typed CRUD, a fluent query " +
+                    "builder that pushes conditions down to native indexes, idempotent " +
+                    "batch transactions, full SQL access, and schema introspection, all " +
+                    "over java.net.HttpURLConnection. No external runtime dependencies."
+                )
+                url.set("https://github.com/visorcraft/MongrelDB-Kotlin")
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                    license {
+                        name.set("Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("Visorcraft")
+                        email.set("support@visorcraft.com")
+                        organization.set("Visorcraft")
+                        organizationUrl.set("https://www.visorcraft.com")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:https://github.com/visorcraft/MongrelDB-Kotlin.git")
+                    developerConnection.set("scm:git:https://github.com/visorcraft/MongrelDB-Kotlin.git")
+                    url.set("https://github.com/visorcraft/MongrelDB-Kotlin")
+                }
+            }
+        }
+    }
+
+    // Central Publishing Portal staging API (OSSRH replacement). Credentials
+    // injected via ORG_GRADLE_PROJECT_* env vars in CI. The `publish` task
+    // uploads to the staging repository; a follow-up API call in the release
+    // workflow converts the staging repo to a deployment and publishes it.
+    repositories {
+        maven {
+            name = "central"
+            url = uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
+            credentials {
+                username = findProperty("mavenCentralUsername") as String?
+                password = findProperty("mavenCentralPassword") as String?
+            }
+        }
+    }
+}
+
+signing {
+    // Only sign when credentials are present (CI); local dev builds skip it.
+    isRequired = gradle.startParameter.taskNames.any { it.contains("publish") }
+    sign(publishing.publications["maven"])
 }
 
 

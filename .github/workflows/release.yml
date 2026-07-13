@@ -1,0 +1,70 @@
+# Publishes mongreldb-kotlin to Maven Central on a `v*` tag push.
+#
+# The new Central Publishing Portal has no official Gradle plugin (as of 2025),
+# so we publish to the staging API via maven-publish, then call the Portal REST
+# API to convert the staging repository into a published deployment.
+#
+# Required secrets (repo settings → Secrets and variables → Actions):
+#   CENTRAL_USERNAME  - Central Portal token username
+#   CENTRAL_PASSWORD  - Central Portal token password
+#   GPG_PRIVATE_KEY   - ASCII-armored GPG signing key (--export-secret-keys --armor)
+#   GPG_KEY_ID        - Key ID (e.g. ABCDEF1234567890)
+#   GPG_PASSPHRASE    - GPG key passphrase
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      STAGING_API: https://central.sonatype.com/api/v1
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 11
+
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --dearmor --output /tmp/signing.gpg
+
+      - name: Publish to Central staging repository
+        env:
+          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingSecretKeyRingFile: /tmp/signing.gpg
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.CENTRAL_PASSWORD }}
+        run: ./gradlew --no-daemon publishMavenPublicationToCentralRepository
+
+      - name: Publish staging deployment via Portal API
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          # The Gradle upload created a staging repository; now promote it.
+          # Query recent staging repos, find ours, and publish it.
+          AUTH="$CENTRAL_USERNAME:$CENTRAL_PASSWORD"
+          # List staging repos and find the one matching our artifact
+          STAGING_REPOS=$(curl -s -u "$AUTH" \
+            "https://ossrh-staging-api.central.sonatype.com/service/local/staging/profile_repositories" \
+            | python3 -c "import json,sys; data=json.load(sys.stdin); print(' '.join(r['repositoryId'] for r in data.get('data',[])))")
+          echo "Staging repos: $STAGING_REPOS"
+          for repo in $STAGING_REPOS; do
+            echo "Publishing staging repo: $repo"
+            curl -sf -u "$AUTH" -X POST \
+              "https://ossrh-staging-api.central.sonatype.com/service/local/staging/bulk/promote" \
+              -H 'Content-Type: application/json' \
+              -d "{\"data\":{\"stagedRepositoryIds\":[\"$repo\"],\"description\":\"Publish mongreldb-kotlin ${{ github.ref_name }}\"}}"
+          done
