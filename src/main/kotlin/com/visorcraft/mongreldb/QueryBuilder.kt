@@ -35,6 +35,7 @@ public class QueryBuilder internal constructor(
     private val conditions: MutableList<Map<String, Any?>> = ArrayList()
     private var projection: List<Long>? = null
     private var limit: Long? = null
+    private var offset: Long? = null
 
     @Volatile
     public var truncated: Boolean = false
@@ -89,6 +90,12 @@ public class QueryBuilder internal constructor(
         return this
     }
 
+    /** Skips matching rows before applying the limit. */
+    public fun offset(offset: Long): QueryBuilder {
+        this.offset = offset
+        return this
+    }
+
     /**
      * Builds the request payload that will be sent to `/kit/query`.
      */
@@ -101,6 +108,7 @@ public class QueryBuilder internal constructor(
         }
         projection?.let { payload["projection"] = it }
         limit?.let { payload["limit"] = it }
+        offset?.let { payload["offset"] = it }
         return payload
     }
 

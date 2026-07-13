@@ -30,6 +30,13 @@ import java.util.concurrent.atomic.AtomicReference
  * external HTTP-mock dependency.
  */
 class CreateTableWireShapeTest {
+    @Test
+    fun queryBuilderIncludesOffset() {
+        val payload = QueryBuilder(db, "orders").limit(10).offset(12).build()
+        assertEquals(10L, payload["limit"])
+        assertEquals(12L, payload["offset"])
+    }
+
     private lateinit var server: HttpServer
     private lateinit var db: MongrelDB
     private val lastBody = AtomicReference<String?>(null)
