@@ -100,8 +100,8 @@ tasks.named("check") {
 
 // ── Maven Central publishing ───────────────────────────────────────────────
 // The signing plugin only signs when the publishing task runs (CI only), and
-// only when signing.keyId/secretKeyRingFile/password are present (gradle.properties
-// in CI, never committed). The emptyJavadocJar satisfies Maven Central's javadoc
+// only when an in-memory signing key is present in CI. The emptyJavadocJar
+// satisfies Maven Central's javadoc
 // requirement for Kotlin libraries (Kotlin consumers use -sources instead).
 val javadocJar by tasks.registering(Jar::class) {
     archiveClassifier.set("javadoc")
@@ -171,9 +171,11 @@ publishing {
 
 signing {
     // Only sign when credentials are present (CI); local dev builds skip it.
+    val signingKey = findProperty("signingKey") as String?
+    if (signingKey != null) {
+        useInMemoryPgpKeys(signingKey, findProperty("signingPassword") as String?)
+    }
     isRequired = gradle.startParameter.taskNames.any { it.contains("publish") }
     sign(publishing.publications["maven"])
 }
-
-
 

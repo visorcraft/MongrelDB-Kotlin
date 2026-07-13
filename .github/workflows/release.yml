@@ -8,7 +8,6 @@
 #   CENTRAL_USERNAME  - Central Portal token username
 #   CENTRAL_PASSWORD  - Central Portal token password
 #   GPG_PRIVATE_KEY   - ASCII-armored GPG signing key (--export-secret-keys --armor)
-#   GPG_KEY_ID        - Key ID (e.g. ABCDEF1234567890)
 #   GPG_PASSPHRASE    - GPG key passphrase
 
 name: Release
@@ -35,18 +34,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Import GPG signing key
-        run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --dearmor --output /tmp/signing.gpg
-          mkdir -p ~/.gnupg
-          chmod 700 ~/.gnupg
-          gpg --batch --import /tmp/signing.gpg
-          echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key ${{ secrets.GPG_KEY_ID }} trust
-
       - name: Publish to Central staging repository
         env:
-          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
-          ORG_GRADLE_PROJECT_signingSecretKeyRingFile: /tmp/signing.gpg
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.CENTRAL_PASSWORD }}
