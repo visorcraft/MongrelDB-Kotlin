@@ -300,6 +300,9 @@ public class MongrelDB(
      */
     public fun query(table: String): QueryBuilder = QueryBuilder(this, table)
 
+    /** Start a hybrid [SearchBuilder] against [table] (`POST /kit/search`). */
+    public fun search(table: String): SearchBuilder = SearchBuilder(this, table)
+
     // ── SQL ───────────────────────────────────────────────────────────────
 
     /**
