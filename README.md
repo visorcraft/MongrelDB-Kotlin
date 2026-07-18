@@ -21,20 +21,20 @@
 
 | Surface | Coordinates | Install |
 |---|---|---|
-| Kotlin client | `com.visorcraft:mongreldb-kotlin:0.59.1` | Gradle / Maven snippets below |
+| Kotlin client | `com.visorcraft:mongreldb-kotlin:0.60.2` | Gradle / Maven snippets below |
 
 ### Gradle (Kotlin DSL)
 
 ```kotlin
 dependencies {
-    implementation("com.visorcraft:mongreldb-kotlin:0.59.1")
+    implementation("com.visorcraft:mongreldb-kotlin:0.60.2")
 }
 ```
 
 ### Gradle (Groovy DSL)
 
 ```groovy
-implementation 'com.visorcraft:mongreldb-kotlin:0.59.1'
+implementation 'com.visorcraft:mongreldb-kotlin:0.60.2'
 ```
 
 ### Maven
@@ -43,7 +43,7 @@ implementation 'com.visorcraft:mongreldb-kotlin:0.59.1'
 <dependency>
   <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-kotlin</artifactId>
-  <version>0.59.1</version>
+  <version>0.60.2</version>
 </dependency>
 ```
 
@@ -406,7 +406,7 @@ Fetch a prebuilt server binary from the
 ```sh
 mkdir -p bin
 curl -fsSL -o bin/mongreldb-server \
-  https://github.com/visorcraft/MongrelDB/releases/download/v0.59.1/mongreldb-server-linux-x64
+  https://github.com/visorcraft/MongrelDB/releases/download/v0.60.2/mongreldb-server-linux-x64
 chmod +x bin/mongreldb-server
 ```
 
