@@ -31,6 +31,56 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class CreateTableWireShapeTest {
     @Test
+    fun allIndexesAndEmbeddingSourceReachWire() {
+        val columns =
+            listOf(
+                idColumn(),
+                mapOf<String, Any?>(
+                    "id" to 2L,
+                    "name" to "embedding",
+                    "ty" to "embedding(384)",
+                    "embedding_source" to mapOf(
+                        "kind" to "configured_model",
+                        "provider_id" to "docs",
+                        "model_id" to "model",
+                        "model_version" to "1",
+                    ),
+                ),
+            )
+        val indexes =
+            listOf(
+                mapOf<String, Any?>("name" to "bm", "column_id" to 1L, "kind" to "bitmap"),
+                mapOf<String, Any?>("name" to "fm", "column_id" to 1L, "kind" to "fm_index"),
+                mapOf<String, Any?>(
+                    "name" to "ann",
+                    "column_id" to 2L,
+                    "kind" to "ann",
+                    "predicate" to "embedding IS NOT NULL",
+                    "options" to mapOf(
+                        "ann" to mapOf(
+                            "m" to 24,
+                            "ef_construction" to 96,
+                            "ef_search" to 48,
+                            "quantization" to "dense",
+                        ),
+                    ),
+                ),
+                mapOf<String, Any?>("name" to "range", "column_id" to 1L, "kind" to "learned_range"),
+                mapOf<String, Any?>("name" to "minhash", "column_id" to 1L, "kind" to "minhash"),
+                mapOf<String, Any?>("name" to "sparse", "column_id" to 1L, "kind" to "sparse"),
+            )
+
+        assertEquals(7L, db.createTable("search_docs", columns, null, indexes))
+        val body = lastBody.get()!!
+        for (kind in listOf("bitmap", "fm_index", "ann", "learned_range", "minhash", "sparse")) {
+            assertTrue(body.contains("\"kind\":\"$kind\""), "body missing $kind: $body")
+        }
+        assertTrue(body.contains("\"embedding_source\":{\"kind\":\"configured_model\""))
+        assertTrue(body.contains("\"quantization\":\"dense\""))
+        assertTrue(body.contains("\"predicate\":\"embedding IS NOT NULL\""))
+    }
+
+    @Test
     fun queryBuilderIncludesOffset() {
         val payload = QueryBuilder(db, "orders").limit(10).offset(12).build()
         assertEquals(10L, payload["limit"])
