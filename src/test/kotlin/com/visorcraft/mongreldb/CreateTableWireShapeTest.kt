@@ -81,6 +81,91 @@ class CreateTableWireShapeTest {
     }
 
     @Test
+    fun diskannAndIvfAndProductQuantizationReachWire() {
+        val columns =
+            listOf(
+                idColumn(),
+                mapOf<String, Any?>(
+                    "id" to 2L,
+                    "name" to "embedding",
+                    "ty" to "embedding(384)",
+                ),
+            )
+        // Three ANN indexes exercising the swappable Phase 2 backends:
+        // DiskANN + dense, IVF + dense, and HNSW (default) + product quantization.
+        // Kotlin's mapOf preserves insertion order, so the algorithm-specific
+        // sub-maps serialize in the engine's documented field order.
+        val indexes =
+            listOf(
+                mapOf<String, Any?>(
+                    "name" to "ann_diskann",
+                    "column_id" to 2L,
+                    "kind" to "ann",
+                    "predicate" to "embedding IS NOT NULL",
+                    "options" to mapOf(
+                        "ann" to mapOf(
+                            "algorithm" to "diskann",
+                            "quantization" to "dense",
+                            "diskann" to mapOf(
+                                "r" to 128,
+                                "l" to 256,
+                                "beam_width" to 8,
+                                "alpha" to 1.2,
+                            ),
+                        ),
+                    ),
+                ),
+                mapOf<String, Any?>(
+                    "name" to "ann_ivf",
+                    "column_id" to 2L,
+                    "kind" to "ann",
+                    "predicate" to "embedding IS NOT NULL",
+                    "options" to mapOf(
+                        "ann" to mapOf(
+                            "algorithm" to "ivf",
+                            "quantization" to "dense",
+                            "ivf" to mapOf(
+                                "nlist" to 512,
+                                "nprobe" to 16,
+                            ),
+                        ),
+                    ),
+                ),
+                mapOf<String, Any?>(
+                    "name" to "ann_product",
+                    "column_id" to 2L,
+                    "kind" to "ann",
+                    "predicate" to "embedding IS NOT NULL",
+                    "options" to mapOf(
+                        "ann" to mapOf(
+                            "m" to 24,
+                            "ef_construction" to 96,
+                            "ef_search" to 48,
+                            "quantization" to "product",
+                            "product" to mapOf(
+                                "training_samples" to 100000,
+                                "seed" to 7,
+                                "rerank_factor" to 4,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+
+        assertEquals(7L, db.createTable("search_docs", columns, null, indexes))
+        val body = lastBody.get()!!
+        // DiskANN backend and its hyperparameters must reach the wire verbatim.
+        assertTrue(body.contains("\"algorithm\":\"diskann\""), "missing algorithm diskann: $body")
+        assertTrue(body.contains("\"diskann\":{\"r\":128"), "missing diskann options: $body")
+        // IVF backend and its hyperparameters must reach the wire verbatim.
+        assertTrue(body.contains("\"algorithm\":\"ivf\""), "missing algorithm ivf: $body")
+        assertTrue(body.contains("\"ivf\":{\"nlist\":512"), "missing ivf options: $body")
+        // Product quantization must reach the wire alongside its training config.
+        assertTrue(body.contains("\"quantization\":\"product\""), "missing product quantization: $body")
+        assertTrue(body.contains("\"product\":{\"training_samples\":100000"), "missing product options: $body")
+    }
+
+    @Test
     fun queryBuilderIncludesOffset() {
         val payload = QueryBuilder(db, "orders").limit(10).offset(12).build()
         assertEquals(10L, payload["limit"])
