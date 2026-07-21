@@ -31,7 +31,7 @@ Fetch a prebuilt server binary from the
 ```sh
 mkdir -p bin
 curl -fsSL -o bin/mongreldb-server \
-  https://github.com/visorcraft/MongrelDB/releases/download/v0.61.1/mongreldb-server-linux-x64
+  https://github.com/visorcraft/MongrelDB/releases/download/v0.62.0/mongreldb-server-linux-x64
 chmod +x bin/mongreldb-server
 ```
 
@@ -68,7 +68,7 @@ Add the dependency to `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("com.visorcraft:mongreldb-kotlin:0.61.1")
+    implementation("com.visorcraft:mongreldb-kotlin:0.62.0")
 }
 ```
 
@@ -85,7 +85,7 @@ kotlin {
 ### With Gradle (Groovy DSL)
 
 ```groovy
-implementation 'com.visorcraft:mongreldb-kotlin:0.61.1'
+implementation 'com.visorcraft:mongreldb-kotlin:0.62.0'
 ```
 
 ### With Maven
@@ -94,7 +94,7 @@ implementation 'com.visorcraft:mongreldb-kotlin:0.61.1'
 <dependency>
   <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-kotlin</artifactId>
-  <version>0.61.1</version>
+  <version>0.62.0</version>
 </dependency>
 ```
 
