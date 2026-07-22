@@ -312,6 +312,72 @@ public class MongrelDB(
     /** Start a hybrid [SearchBuilder] against [table] (`POST /kit/search`). */
     public fun search(table: String): SearchBuilder = SearchBuilder(this, table)
 
+    /**
+     * Text → embed under the active semantic identity → ANN retrieve
+     * (`POST /kit/retrieve_text`, 0.64+).
+     *
+     * @param table table name
+     * @param embeddingColumn embedding column id
+     * @param text query text
+     * @param k optional hit limit (`null` → server default)
+     * @return map with `hits` and `provenance`
+     */
+    @Suppress("UNCHECKED_CAST")
+    public fun retrieveText(
+        table: String,
+        embeddingColumn: Int,
+        text: String,
+        k: Int? = null,
+    ): Map<String, Any?> {
+        val payload: MutableMap<String, Any?> = LinkedHashMap()
+        payload["table"] = table
+        payload["embedding_column"] = embeddingColumn
+        payload["text"] = text
+        if (k != null) {
+            payload["k"] = k
+        }
+        val body = post("/kit/retrieve_text", payload)
+        val parsed = if (body.isEmpty()) null else Json.parse(body)
+        if (parsed is Map<*, *>) {
+            return parsed as Map<String, Any?>
+        }
+        return mapOf(
+            "hits" to emptyList<Any?>(),
+            "provenance" to emptyMap<String, Any?>(),
+        )
+    }
+
+    /**
+     * Retained SQL execution status for durable recovery
+     * (`GET /queries/{query_id}`).
+     */
+    @Suppress("UNCHECKED_CAST")
+    public fun queryStatus(queryId: String): QueryStatus {
+        require(queryId.isNotBlank()) { "queryId is required" }
+        val body = get("/queries/${urlPathEscape(queryId)}")
+        val parsed = if (body.isEmpty()) null else Json.parse(body)
+        if (parsed !is Map<*, *>) {
+            throw QueryException("mongreldb: query status response was not a JSON object")
+        }
+        return QueryStatus.fromMap(parsed as Map<String, Any?>)
+    }
+
+    /**
+     * Request cancellation of a running SQL query
+     * (`POST /queries/{query_id}/cancel`).
+     */
+    @Suppress("UNCHECKED_CAST")
+    public fun cancelQuery(queryId: String): Map<String, Any?> {
+        require(queryId.isNotBlank()) { "queryId is required" }
+        val body = post("/queries/${urlPathEscape(queryId)}/cancel", emptyMap<String, Any?>())
+        if (body.isEmpty()) return emptyMap()
+        val parsed = Json.parse(body)
+        if (parsed is Map<*, *>) {
+            return parsed as Map<String, Any?>
+        }
+        return emptyMap()
+    }
+
     // ── SQL ───────────────────────────────────────────────────────────────
 
     /**
