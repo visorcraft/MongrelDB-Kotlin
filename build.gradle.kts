@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "com.visorcraft"
-version = "0.64.16"
+version = "0.64.17"
 
 repositories {
     mavenCentral()
